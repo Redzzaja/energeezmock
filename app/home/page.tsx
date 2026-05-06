@@ -8,7 +8,7 @@ import HomeClient from "./HomeClient";
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [dailyEnergy, setDailyEnergy] = useState(50);
+  const [dailyEnergy, setDailyEnergy] = useState(0);
   const [isOverloaded, setIsOverloaded] = useState(false);
   const [overloadAmount, setOverloadAmount] = useState(0);
   const [peakTime, setPeakTime] = useState("10:00 AM");
@@ -17,7 +17,7 @@ export default function HomePage() {
   const [quickStats, setQuickStats] = useState({
     vsLastWeek: 0,
     activityCount: 0,
-    avgEnergy: 50,
+    avgEnergy: 0,
   });
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function HomePage() {
       // Get real-time calculated energy from today's activities
       const currentEnergy = statsResult.success && statsResult.stats?.currentEnergy 
         ? statsResult.stats.currentEnergy 
-        : 50; // Base energy for new users
+        : 0; // Base energy for new users
       
       const overloadStatus = statsResult.success && statsResult.stats?.isOverloaded 
         ? statsResult.stats.isOverloaded 
@@ -86,8 +86,8 @@ export default function HomePage() {
         ? activitiesResult.activities.length
         : 0;
 
-      // Calculate average from weekly trend - default 50 for new users
-      let avgEnergy = 50;
+      // Calculate average from weekly trend - default 0 for new users
+      let avgEnergy = 0;
       if (statsResult.success && statsResult.stats?.weeklyData && statsResult.stats.weeklyData.length > 0) {
         const validData = statsResult.stats.weeklyData.filter((d: any) => d.value !== null);
         if (validData.length > 0) {

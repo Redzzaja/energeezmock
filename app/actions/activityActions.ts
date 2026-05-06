@@ -322,7 +322,7 @@ export async function getCategories() {
 // Calculate daily energy from today's activities
 function calculateDailyEnergyFromActivities(
   activitiesList: { energyImpact: number | null; createdAt: Date | null }[],
-  baseEnergy: number = 50
+  baseEnergy: number = 0
 ) {
   // Sum all energy impacts from today
   const totalImpact = activitiesList.reduce((sum, activity) => {

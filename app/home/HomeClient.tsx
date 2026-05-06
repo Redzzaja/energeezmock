@@ -121,9 +121,11 @@ export default function HomeClient({
                         ? "You've exceeded your daily energy limit!"
                         : dailyEnergy > 80
                         ? "You're running at peak performance."
-                        : dailyEnergy > 50
-                        ? "Good energy level today."
-                        : "Time to recharge and recover."}
+                        : dailyEnergy > 40
+                        ? "Building good momentum today."
+                        : dailyEnergy > 0
+                        ? "Getting started. Keep it up!"
+                        : "Start your day with an activity!"}
                     </p>
                   </div>
 

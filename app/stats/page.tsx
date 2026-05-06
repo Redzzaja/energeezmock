@@ -12,9 +12,9 @@ export default function StatsPage() {
   const [activityBreakdown, setActivityBreakdown] = useState<any[]>([]);
   const [insights, setInsights] = useState<any[]>([]);
   const [summaryStats, setSummaryStats] = useState({
-    avgEnergy: 50,
-    peak: 50,
-    low: 50,
+    avgEnergy: 0,
+    peak: 0,
+    low: 0,
     trend: 0,
   });
 
@@ -48,7 +48,7 @@ export default function StatsPage() {
           return {
             day: log.day,
             full: fullDays[dayIndex],
-            value: Math.round(log.value ?? 50),
+            value: Math.round(log.value ?? 0),
           };
         });
       }
@@ -94,19 +94,19 @@ export default function StatsPage() {
         ? activitiesResult.activities.length
         : 0;
 
-      // Calculate stats - default to 50 (base) for new users
+      // Calculate stats - default to 0 (base) for new users
       const hasData = processedWeeklyData.length > 0;
       const avgEnergy = hasData
         ? Math.round(processedWeeklyData.reduce((sum: number, d: any) => sum + d.value, 0) / processedWeeklyData.length)
-        : 50;
+        : 0;
 
       const peakValue = hasData
         ? Math.max(...processedWeeklyData.map((d: any) => d.value))
-        : 50;
+        : 0;
 
       const lowValue = hasData
         ? Math.min(...processedWeeklyData.map((d: any) => d.value))
-        : 50;
+        : 0;
 
       const trendValue = hasData && processedWeeklyData.length >= 2
         ? Math.round(((processedWeeklyData[processedWeeklyData.length - 1].value - processedWeeklyData[0].value) / processedWeeklyData[0].value) * 100)
@@ -117,7 +117,7 @@ export default function StatsPage() {
         {
           icon: "trending_up",
           title: "Peak Performance",
-          description: hasData && peakValue > 50
+          description: hasData && peakValue > 0
             ? `Your energy peaked at ${peakValue}%. Great job maintaining performance!`
             : activityCount === 0
             ? "Start adding activities to track your energy patterns."
