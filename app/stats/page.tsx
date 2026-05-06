@@ -163,29 +163,19 @@ export default function StatsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  // Empty monthly data for new users
-  const monthlyData = [
-    { week: "Week 1", value: 50 },
-    { week: "Week 2", value: 50 },
-    { week: "Week 3", value: 50 },
-    { week: "Week 4", value: 50 },
-  ];
-
   return (
     <StatsClient
       weeklyData={weeklyData}
-      monthlyData={monthlyData}
+      monthlyData={[
+        { week: "Week 1", value: 50 },
+        { week: "Week 2", value: 50 },
+        { week: "Week 3", value: 50 },
+        { week: "Week 4", value: 50 },
+      ]}
       activityBreakdown={activityBreakdown}
       insights={insights}
       summaryStats={summaryStats}
+      loading={loading}
     />
   );
 }

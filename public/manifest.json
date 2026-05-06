@@ -1,0 +1,44 @@
+{
+  "name": "Energeez",
+  "short_name": "Energeez",
+  "description": "Track and manage your daily energy levels with mindfulness",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#4A7C59",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["health", "fitness", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Activity",
+      "short_name": "Add",
+      "description": "Add a new energy tracking activity",
+      "url": "/add",
+      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "View Stats",
+      "short_name": "Stats",
+      "description": "View your energy statistics",
+      "url": "/stats",
+      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

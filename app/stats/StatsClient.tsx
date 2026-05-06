@@ -44,6 +44,7 @@ interface StatsClientProps {
   activityBreakdown: ActivityBreakdown[];
   insights: Insight[];
   summaryStats: SummaryStats;
+  loading?: boolean;
 }
 
 export default function StatsClient({
@@ -52,7 +53,51 @@ export default function StatsClient({
   activityBreakdown,
   insights,
   summaryStats,
+  loading = false,
 }: StatsClientProps) {
+  if (loading) {
+    return (
+      <PageLayout>
+        <div className="min-h-screen bg-surface relative md:pb-0 pb-20">
+          {/* Mobile TopAppBar */}
+          <div className="md:hidden">
+            <TopAppBar />
+          </div>
+
+          <main className="px-5 pt-[72px] md:pt-0 pb-6">
+            {/* Header - Desktop */}
+            <div className="hidden md:flex md:items-center md:justify-between md:mb-8">
+              <div>
+                <h1 className="font-h1 text-h1 text-on-surface">Statistics</h1>
+                <p className="font-body-md text-on-surface-variant mt-1">
+                  Analyze your energy patterns and productivity trends.
+                </p>
+              </div>
+            </div>
+
+            {/* Loading skeleton */}
+            <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 animate-fade-in-up">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-surface-container rounded-2xl p-4 animate-pulse h-24" />
+              ))}
+            </section>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-surface-container rounded-2xl p-6 h-48 animate-pulse" />
+                <div className="bg-surface-container rounded-2xl p-6 h-48 animate-pulse" />
+              </div>
+              <div className="space-y-6">
+                <div className="bg-surface-container rounded-2xl p-6 h-64 animate-pulse" />
+                <div className="bg-surface-container rounded-2xl p-6 h-64 animate-pulse" />
+              </div>
+            </div>
+          </main>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout>
       <div className="min-h-screen bg-surface relative md:pb-0 pb-20">

@@ -4,12 +4,7 @@ import { db } from "../../db";
 import { users } from "../../db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-
-// Simple hash function (for demo purposes - in production use bcrypt)
-export function simpleHash(password: string): string {
-  // Simple base64 encoding for demo - NOT SECURE FOR PRODUCTION
-  return Buffer.from(password + "energeez-salt").toString("base64");
-}
+import { simpleHash } from "../../lib/hash";
 
 // Register new user
 export async function registerUser(data: {

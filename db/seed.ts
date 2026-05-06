@@ -3,11 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 import { eq } from "drizzle-orm";
-
-// Simple hash function (same as in authActions.ts)
-function simpleHash(password: string): string {
-  return Buffer.from(password + "energeez-salt").toString("base64");
-}
+import { simpleHash } from "../lib/hash";
 
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });

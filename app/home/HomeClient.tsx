@@ -36,6 +36,7 @@ interface HomeClientProps {
   weeklyTrend: WeeklyTrend[];
   activities: Activity[];
   quickStats: QuickStats;
+  loading?: boolean;
 }
 
 export default function HomeClient({
@@ -46,6 +47,7 @@ export default function HomeClient({
   weeklyTrend,
   activities,
   quickStats,
+  loading = false,
 }: HomeClientProps) {
   const router = useRouter();
   const [userName, setUserName] = useState("");
@@ -58,6 +60,54 @@ export default function HomeClient({
       setUserName(user.name || "User");
     }
   }, []);
+
+  if (loading) {
+    return (
+      <PageLayout>
+        <div className="min-h-screen bg-surface relative md:pb-0 pb-20">
+          {/* Mobile TopAppBar */}
+          <div className="md:hidden">
+            <TopAppBar />
+          </div>
+
+          <main className="px-5 pt-[72px] md:pt-0 pb-6">
+            {/* Header - Desktop */}
+            <div className="hidden md:flex md:items-center md:justify-between md:mb-8">
+              <div>
+                <h1 className="font-h1 text-h1 text-on-surface">Dashboard</h1>
+                <p className="font-body-md text-on-surface-variant mt-1">
+                  Welcome back! Here's your energy overview.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                {/* Loading skeleton */}
+                <div className="bg-surface-container rounded-2xl p-6 md:p-8 min-h-[280px] md:min-h-[240px] animate-pulse">
+                  <div className="h-8 bg-surface-variant rounded w-1/3 mb-4"></div>
+                  <div className="h-16 bg-surface-variant rounded w-2/3 mb-8"></div>
+                  <div className="flex items-end justify-between">
+                    <div className="h-20 bg-surface-variant rounded w-1/4"></div>
+                    <div className="h-12 bg-surface-variant rounded w-1/4"></div>
+                  </div>
+                </div>
+                <div className="h-48 bg-surface-variant rounded-xl animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-20 bg-surface-variant rounded-xl animate-pulse"></div>
+                  <div className="h-20 bg-surface-variant rounded-xl animate-pulse"></div>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div className="h-40 bg-surface-variant rounded-xl animate-pulse"></div>
+                <div className="h-64 bg-surface-variant rounded-xl animate-pulse"></div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </PageLayout>
+    );
+  }
   return (
     <PageLayout>
       <div className="min-h-screen bg-surface relative md:pb-0 pb-20">
