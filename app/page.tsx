@@ -1,65 +1,68 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function SplashPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to home after 3 seconds
+    const timer = setTimeout(() => {
+      router.push("/loading");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-surface text-on-background flex items-center justify-center relative overflow-hidden">
+      {/* Abstract Background Elements - Wave pattern */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div className="absolute top-[-10%] left-[-20%] w-[140%] h-[60%] rounded-[100%] bg-primary-container mix-blend-multiply blur-3xl transform rotate-12 animate-fade-in"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[120%] h-[70%] rounded-[100%] bg-surface-tint mix-blend-multiply blur-3xl transform -rotate-6 animate-fade-in stagger-1"></div>
+      </div>
+
+      {/* Main Content */}
+      <div className="z-10 flex flex-col items-center justify-center text-center space-y-6 md:space-y-8 animate-fade-in-up">
+        {/* Logo Container */}
+        <div className="w-32 h-32 md:w-48 md:h-48 rounded-full bg-primary-container flex items-center justify-center shadow-lg mb-4 relative overflow-hidden group animate-scale-in"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-fixed to-primary-container opacity-50"></div>
+          <span
+            className="material-symbols-outlined text-[64px] md:text-[96px] text-on-primary-container z-10 animate-pulse-slow"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            bolt
+          </span>
+        </div>
+
+        {/* Brand Text */}
+        <div>
+          <h1 className="font-h1 text-h1 md:text-5xl md:leading-tight text-primary tracking-tight">
+            ENERGEEZ
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="font-body-md md:font-body-lg text-body-md md:text-body-lg text-on-surface-variant max-w-[200px] md:max-w-[300px] mt-2 mx-auto">
+            Mindful energy tracking for a balanced life.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Loading dots */}
+        <div className="flex gap-2 mt-8 md:mt-12">
+          <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-primary animate-bounce"
+          style={{ animationDelay: "0s" }}></div>
+          <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-primary animate-bounce"
+          style={{ animationDelay: "0.2s" }}></div>
+          <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-primary animate-bounce"
+          style={{ animationDelay: "0.4s" }}></div>
         </div>
-      </main>
+      </div>
+
+      {/* Desktop decoration */}
+      <div className="hidden md:flex absolute bottom-12 items-center gap-2 text-on-surface-variant animate-fade-in stagger-2">
+        <span className="material-symbols-outlined text-[18px]">smartphone</span>
+        <span className="font-label-md text-label-md">Available on all devices</span>
+      </div>
     </div>
   );
 }
