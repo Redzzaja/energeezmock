@@ -4,6 +4,11 @@ import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 import { eq } from "drizzle-orm";
 
+// Simple hash function (same as in authActions.ts)
+function simpleHash(password: string): string {
+  return Buffer.from(password + "energeez-salt").toString("base64");
+}
+
 const sql = neon(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema });
 
@@ -13,10 +18,12 @@ async function seed() {
   try {
     // 1. Create demo user
     console.log("👤 Creating demo user...");
+    const demoPassword = simpleHash("123456");
     const [demoUser] = await db
       .insert(schema.users)
       .values({
         email: "demo@energeez.app",
+        password: demoPassword,
         name: "John Doe",
         preferences: {
           theme: "light",
@@ -32,7 +39,13 @@ async function seed() {
         where: eq(schema.users.email, "demo@energeez.app"),
       });
       if (existingUser) {
-        console.log("✅ Demo user already exists\n");
+        console.log("✅ Demo user already exists, updating password...\n");
+        // Update password for existing demo user
+        await db
+          .update(schema.users)
+          .set({ password: demoPassword })
+          .where(eq(schema.users.email, "demo@energeez.app"));
+        console.log("✅ Demo user password updated to: 123456\n");
       }
     } else {
       console.log("✅ Demo user created:\n", demoUser, "\n");
