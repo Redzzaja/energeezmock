@@ -19,8 +19,12 @@ export default function HomePage() {
     activityCount: 0,
     avgEnergy: 0,
   });
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple loads
+    if (hasLoaded) return;
+    
     const storedUser = localStorage.getItem("currentUser");
     if (!storedUser) {
       router.push("/auth");
@@ -28,8 +32,9 @@ export default function HomePage() {
     }
 
     const user = JSON.parse(storedUser);
+    setHasLoaded(true);
     loadUserData(user.id);
-  }, [router]);
+  }, [router, hasLoaded]);
 
   const loadUserData = async (userId: number) => {
     try {

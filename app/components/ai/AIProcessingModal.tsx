@@ -5,8 +5,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 interface AIProcessingModalProps {
   isOpen: boolean;
   activityTitle: string;
-  onComplete: (result: AIProcessingResult) => void;
+  onComplete: () => void;
   onCancel: () => void;
+  duration?: number;
 }
 
 interface AIProcessingResult {
@@ -61,12 +62,14 @@ export default function AIProcessingModal({
   activityTitle,
   onComplete,
   onCancel,
+  duration = 30,
 }: AIProcessingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [typingText, setTypingText] = useState("");
   const [isComplete, setIsComplete] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -96,39 +99,17 @@ export default function AIProcessingModal({
     setTypingText("");
     setIsComplete(false);
     setShowDetails(false);
+    setHasStarted(false);
   }, []);
 
-  // Handle completion
+  // Handle completion - data already processed server-side
   const handleComplete = useCallback(() => {
     setIsComplete(true);
-    const mockResult: AIProcessingResult = {
-      predictedEnergyImpact: Math.floor(Math.random() * 60) - 30,
-      confidence: 0.85 + Math.random() * 0.14,
-      optimalTime: ["08:00 AM", "02:00 PM", "06:00 PM"][
-        Math.floor(Math.random() * 3)
-      ],
-      categoryMatch: ["Work", "Exercise", "Rest"][
-        Math.floor(Math.random() * 3)
-      ],
-      mlInsights: [
-        "High correlation with your morning routine",
-        "Optimal duration for your current energy level",
-        "Matches your productivity pattern profile",
-      ],
-    };
+    // Call onComplete after a brief delay to show completion state
     completeTimeoutRef.current = setTimeout(() => {
-      onComplete(mockResult);
-    }, 500);
+      onComplete();
+    }, 800);
   }, [onComplete]);
-
-  // Move to next step
-  const moveToNextStep = useCallback((currentStepIndex: number) => {
-    if (currentStepIndex < processingSteps.length - 1) {
-      setCurrentStep(currentStepIndex + 1);
-    } else {
-      handleComplete();
-    }
-  }, [handleComplete]);
 
   // Start progress for a step
   const startStepProgress = useCallback((stepIndex: number) => {
@@ -152,15 +133,21 @@ export default function AIProcessingModal({
         clearInterval(progressIntervalRef.current!);
         progressIntervalRef.current = null;
         
-        // Wait then move to next step
-        stepTimeoutRef.current = setTimeout(() => {
-          moveToNextStep(stepIndex);
-        }, 300);
+        // Check if this is the last step
+        if (stepIndex >= processingSteps.length - 1) {
+          // Last step - call handleComplete
+          handleComplete();
+        } else {
+          // Wait then move to next step
+          stepTimeoutRef.current = setTimeout(() => {
+            setCurrentStep(stepIndex + 1);
+          }, 300);
+        }
       } else {
         setProgress(currentProgress);
       }
     }, 30);
-  }, [moveToNextStep]);
+  }, [handleComplete]);
 
   // Typing effect
   useEffect(() => {
@@ -182,17 +169,20 @@ export default function AIProcessingModal({
     return () => clearInterval(typeInterval);
   }, [currentStep, isOpen]);
 
-  // Main animation effect - starts when modal opens
+  // Start animation when modal opens - runs only once per open
   useEffect(() => {
     if (!isOpen) return;
 
-    // Start from step 0
-    startStepProgress(0);
+    // Only start if we haven't started yet and modal just opened
+    if (!hasStarted) {
+      setHasStarted(true);
+      startStepProgress(0);
+    }
 
     return () => {
       clearAllTimers();
     };
-  }, [isOpen, startStepProgress, clearAllTimers]);
+  }, [isOpen, hasStarted]); // Intentionally not including startStepProgress/clearAllTimers
 
   // Handle step changes - start progress for new step
   useEffect(() => {
@@ -200,7 +190,8 @@ export default function AIProcessingModal({
     if (currentStep > 0 && currentStep < processingSteps.length) {
       startStepProgress(currentStep);
     }
-  }, [currentStep, isOpen, isComplete, startStepProgress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, isOpen, isComplete]); // startStepProgress intentionally omitted
 
   // Canvas animation for neural network
   useEffect(() => {
@@ -298,6 +289,18 @@ export default function AIProcessingModal({
     };
   }, [isOpen]);
 
+  // Disable body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -310,31 +313,31 @@ export default function AIProcessingModal({
   const currentStepData = processingSteps[currentStep] || processingSteps[processingSteps.length - 1];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-surface/95 backdrop-blur-sm" />
 
       {/* Neural Network Canvas */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 pointer-events-none opacity-60"
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-60"
       />
 
-      {/* Main Content */}
-      <div className="relative z-10 w-full max-w-lg mx-4">
+      {/* Main Content - center and limit height */}
+      <div className="relative z-10 w-full max-w-[95vw] sm:max-w-md md:max-w-lg mx-3 sm:mx-4 max-h-[90vh] overflow-y-auto scrollbar-hide">
         {/* Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="relative inline-flex items-center justify-center mb-6">
-            <div className="absolute w-24 h-24 rounded-full border-2 border-secondary animate-[spin_4s_linear_infinite] opacity-30" />
-            <div className="absolute w-32 h-32 rounded-full border border-primary animate-[spin_6s_linear_infinite_reverse] opacity-20" />
+        <div className="text-center mb-4 sm:mb-6 md:mb-8 animate-fade-in">
+          <div className="relative inline-flex items-center justify-center mb-4 sm:mb-6">
+            <div className="absolute w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-2 border-secondary animate-[spin_4s_linear_infinite] opacity-30" />
+            <div className="absolute w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full border border-primary animate-[spin_6s_linear_infinite_reverse] opacity-20" />
             <div
-              className="absolute w-40 h-40 rounded-full border border-secondary animate-ping opacity-10"
+              className="absolute w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border border-secondary animate-ping opacity-10"
               style={{ animationDuration: "3s" }}
             />
 
-            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-2xl shadow-primary/20">
+            <div className="relative w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-2xl shadow-primary/20">
               <span
-                className="material-symbols-outlined text-[40px] text-white"
+                className="material-symbols-outlined text-[28px] sm:text-[32px] md:text-[40px] text-white"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
                 {isComplete ? "check_circle" : currentStepData?.icon || "psychiatry"}
@@ -342,10 +345,10 @@ export default function AIProcessingModal({
             </div>
           </div>
 
-          <h2 className="font-h2 text-h2 text-on-surface mb-2">
+          <h2 className="font-h2 text-[20px] sm:text-[24px] leading-[28px] sm:leading-[32px] font-bold text-on-surface mb-1 sm:mb-2">
             {isComplete ? "Analysis Complete" : "AI Processing"}
           </h2>
-          <p className="font-body-md text-on-surface-variant">
+          <p className="font-body-md text-sm sm:text-base text-on-surface-variant px-2">
             {isComplete
               ? `Analyzed: ${activityTitle}`
               : `Analyzing: ${activityTitle}`}
@@ -353,14 +356,14 @@ export default function AIProcessingModal({
         </div>
 
         {/* Progress Card */}
-        <div className="bg-surface-container-low rounded-3xl p-6 shadow-2xl border border-surface-variant">
+        <div className="bg-surface-container-low rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-surface-variant">
           {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-label-md text-on-surface-variant">Progress</span>
-              <span className="font-h3 text-h3 text-primary">{Math.round(progress)}%</span>
+          <div className="mb-4 sm:mb-6">
+            <div className="flex justify-between items-center mb-1 sm:mb-2">
+              <span className="font-label-md text-sm text-on-surface-variant">Progress</span>
+              <span className="font-h3 text-[18px] sm:text-[20px] leading-[26px] sm:leading-[28px] font-semibold text-primary">{Math.round(progress)}%</span>
             </div>
-            <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+            <div className="h-2 sm:h-3 bg-surface-container rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-100 ease-linear relative"
                 style={{ width: `${progress}%` }}
@@ -371,7 +374,7 @@ export default function AIProcessingModal({
           </div>
 
           {/* Steps */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {processingSteps.map((step, index) => {
               const isActive = index === currentStep && !isComplete;
               const isCompleted = index < currentStep || isComplete;
@@ -379,7 +382,7 @@ export default function AIProcessingModal({
               return (
                 <div
                   key={step.id}
-                  className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+                  className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all duration-300 ${
                     isActive
                       ? "bg-primary-container/50 scale-[1.02]"
                       : isCompleted
@@ -388,7 +391,7 @@ export default function AIProcessingModal({
                   }`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                       isCompleted
                         ? "bg-secondary text-white"
                         : isActive
@@ -396,22 +399,22 @@ export default function AIProcessingModal({
                         : "bg-surface-container-high text-on-surface-variant"
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[20px]">
+                    <span className="material-symbols-outlined text-[16px] sm:text-[20px]">
                       {isCompleted ? "check" : step.icon}
                     </span>
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <h4
-                      className={`font-label-md text-label-md truncate ${
+                      className={`font-label-md text-xs sm:text-sm font-semibold truncate ${
                         isActive ? "text-on-surface" : "text-on-surface-variant"
                       }`}
                     >
                       {step.title}
                     </h4>
-                    <div className="h-6 overflow-hidden">
+                    <div className="h-5 sm:h-6 overflow-hidden">
                       <p
-                        className={`font-body-md text-sm transition-all duration-200 ${
+                        className={`font-body-md text-xs sm:text-sm transition-all duration-200 ${
                           isActive
                             ? "text-primary translate-y-0"
                             : "text-on-surface-variant -translate-y-full"
@@ -419,14 +422,14 @@ export default function AIProcessingModal({
                       >
                         {isActive ? typingText : step.description}
                         {isActive && (
-                          <span className="inline-block w-2 h-4 bg-primary ml-0.5 animate-pulse" />
+                          <span className="inline-block w-1.5 sm:w-2 h-3 sm:h-4 bg-primary ml-0.5 animate-pulse" />
                         )}
                       </p>
                     </div>
                   </div>
 
                   <span
-                    className={`font-label-sm text-label-sm shrink-0 ${
+                    className={`font-label-sm text-xs sm:text-sm shrink-0 ${
                       isActive || isCompleted
                         ? "text-secondary"
                         : "text-on-surface-variant"
@@ -442,12 +445,12 @@ export default function AIProcessingModal({
           {/* Details Toggle */}
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="w-full mt-6 flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors"
+            className="w-full mt-4 sm:mt-6 flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px] text-on-surface-variant">
               {showDetails ? "expand_less" : "expand_more"}
             </span>
-            <span className="font-label-md text-label-md text-on-surface-variant">
+            <span className="font-label-md text-xs sm:text-sm text-on-surface-variant">
               {showDetails ? "Hide Technical Details" : "Show Technical Details"}
             </span>
           </button>
@@ -455,10 +458,10 @@ export default function AIProcessingModal({
           {/* Technical Details Panel */}
           <div
             className={`overflow-hidden transition-all duration-300 ${
-              showDetails ? "max-h-64 mt-4" : "max-h-0"
+              showDetails ? "max-h-48 sm:max-h-64 mt-3 sm:mt-4" : "max-h-0"
             }`}
           >
-            <div className="bg-surface-container-high rounded-xl p-4 font-mono text-xs text-on-surface-variant space-y-2">
+            <div className="bg-surface-container-high rounded-lg sm:rounded-xl p-3 sm:p-4 font-mono text-[10px] sm:text-xs text-on-surface-variant space-y-1.5 sm:space-y-2">
               <div className="flex justify-between">
                 <span>Model:</span>
                 <span className="text-primary">energeez-v2.4-turbo</span>
@@ -475,23 +478,25 @@ export default function AIProcessingModal({
                 <span>Confidence:</span>
                 <span className="text-secondary">{Math.min(Math.round(progress * 0.94 + 6), 99)}%</span>
               </div>
-              <div className="h-px bg-surface-variant my-2" />
-              <div className="text-on-surface-variant/60">Processing inferences across 128-dimensional energy vectors...</div>
+              <div className="h-px bg-surface-variant my-1.5 sm:my-2" />
+              <div className="text-on-surface-variant/60 text-[9px] sm:text-xs">Processing inferences across 128-dimensional energy vectors...</div>
             </div>
           </div>
         </div>
 
         {/* Cancel Button */}
-        <button
-          onClick={() => {
-            clearAllTimers();
-            onCancel();
-          }}
-          disabled={isComplete}
-          className="mt-6 mx-auto block px-6 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-label-md text-label-md"
-        >
-          {isComplete ? "Redirecting..." : "Cancel Processing"}
-        </button>
+        <div className="mt-4 sm:mt-6 mb-8 sm:mb-12">
+          <button
+            onClick={() => {
+              clearAllTimers();
+              onCancel();
+            }}
+            disabled={isComplete}
+            className="mx-auto block px-5 sm:px-6 py-2 sm:py-2.5 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-label-md text-xs sm:text-sm"
+          >
+            {isComplete ? "Redirecting..." : "Cancel Processing"}
+          </button>
+        </div>
       </div>
     </div>
   );

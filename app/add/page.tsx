@@ -48,21 +48,33 @@ export default function AddActivityPage() {
     if (!selectedType) return;
     
     setShowAIProcessing(true);
+    
+    // Process activity with server-side AI (runs parallel with animation)
+    try {
+      const result = await processActivityWithAI({
+        title: selectedType,
+        category: selectedType,
+        duration: duration,
+        notes: notes || undefined,
+      });
+      
+      // Store result
+      setAiResult(result);
+    } catch (error) {
+      console.error("AI Processing failed:", error);
+      // Even on error, we should complete - animation will handle completion
+    }
   };
 
-  const handleAIComplete = (result: {
-    predictedEnergyImpact: number;
-    confidence: number;
-    optimalTime: string;
-    categoryMatch: string;
-    mlInsights: string[];
-  }) => {
-    setAiResult(result);
+  const handleAIComplete = () => {
+    // Close processing modal and show result if we have data
     setShowAIProcessing(false);
-    setShowAIResultModal(true);
+    if (aiResult) {
+      setShowAIResultModal(true);
+    }
   };
 
-  const handleSaveActivity = async () => {
+const handleSaveActivity = async () => {
     if (!aiResult || !selectedType) return;
     
     setIsSubmitting(true);
@@ -98,7 +110,15 @@ export default function AddActivityPage() {
       });
       
       if (result.success) {
-        router.push("/home");
+        // Clear modal state before navigation
+        setShowAIResultModal(false);
+        setAiResult(null);
+        setIsSubmitting(false);
+        // Small delay to ensure modal closes smoothly
+        setTimeout(() => {
+          router.push("/home");
+          router.refresh();
+        }, 100);
       } else {
         console.error("Failed to save activity");
         setIsSubmitting(false);
@@ -323,6 +343,7 @@ export default function AddActivityPage() {
         activityTitle={selectedType || "Activity"}
         onComplete={handleAIComplete}
         onCancel={handleCancelAI}
+        duration={duration}
       />
 
       {/* AI Result Modal - Popup to force save action */}

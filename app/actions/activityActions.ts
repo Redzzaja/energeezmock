@@ -5,19 +5,60 @@ import { db } from "../../db";
 import { activities, categories, energyLogs, mlPredictions } from "../../db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
-// Cached database queries
+// Helper function for database queries with timeout and retry
+async function queryWithTimeout<T>(
+  queryFn: () => Promise<T>,
+  timeoutMs: number = 5000,
+  retries: number = 2
+): Promise<T> {
+  const attemptQuery = async (attempt: number): Promise<T> => {
+    return new Promise(async (resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Query timeout after ${timeoutMs}ms (attempt ${attempt + 1})`));
+      }, timeoutMs);
+
+      try {
+        const result = await queryFn();
+        clearTimeout(timeoutId);
+        resolve(result);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    });
+  };
+
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await attemptQuery(i);
+    } catch (error) {
+      if (i === retries) {
+        console.error(`Query failed after ${retries + 1} attempts:`, error);
+        throw error;
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i)));
+    }
+  }
+
+  throw new Error("Query failed after all retries");
+}
+
+// Cached database queries with error handling
 const getCachedUserActivities = unstable_cache(
   async (userId: number) => {
-    return await db
-      .select({
-        activity: activities,
-        category: categories,
-      })
-      .from(activities)
-      .leftJoin(categories, eq(activities.categoryId, categories.id))
-      .where(eq(activities.userId, userId))
-      .orderBy(desc(activities.createdAt))
-      .limit(20);
+    return await queryWithTimeout(async () => {
+      return await db
+        .select({
+          activity: activities,
+          category: categories,
+        })
+        .from(activities)
+        .leftJoin(categories, eq(activities.categoryId, categories.id))
+        .where(eq(activities.userId, userId))
+        .orderBy(desc(activities.createdAt))
+        .limit(20);
+    }, 3000, 1);
   },
   ["user-activities"],
   { revalidate: 60, tags: ["activities"] } // Cache for 60 seconds
@@ -25,31 +66,33 @@ const getCachedUserActivities = unstable_cache(
 
 const getCachedEnergyStats = unstable_cache(
   async (userId: number) => {
-    // Get weekly energy data (last 7 days)
-    const weeklyData = await db
-      .select({
-        date: energyLogs.date,
-        avgEnergy: energyLogs.avgEnergy,
-      })
-      .from(energyLogs)
-      .where(eq(energyLogs.userId, userId))
-      .orderBy(desc(energyLogs.date))
-      .limit(7);
+    return await queryWithTimeout(async () => {
+      // Get weekly energy data (last 7 days)
+      const weeklyData = await db
+        .select({
+          date: energyLogs.date,
+          avgEnergy: energyLogs.avgEnergy,
+        })
+        .from(energyLogs)
+        .where(eq(energyLogs.userId, userId))
+        .orderBy(desc(energyLogs.date))
+        .limit(7);
 
-    // Get activity breakdown (top 5 categories)
-    const breakdown = await db
-      .select({
-        categoryName: categories.name,
-        count: sql<number>`count(*)::int`,
-        avgImpact: sql<number>`avg(${activities.energyImpact})::float`,
-      })
-      .from(activities)
-      .leftJoin(categories, eq(activities.categoryId, categories.id))
-      .where(eq(activities.userId, userId))
-      .groupBy(categories.name)
-      .limit(5);
+      // Get activity breakdown (top 5 categories)
+      const breakdown = await db
+        .select({
+          categoryName: categories.name,
+          count: sql<number>`count(*)::int`,
+          avgImpact: sql<number>`avg(${activities.energyImpact})::float`,
+        })
+        .from(activities)
+        .leftJoin(categories, eq(activities.categoryId, categories.id))
+        .where(eq(activities.userId, userId))
+        .groupBy(categories.name)
+        .limit(5);
 
-    return { weeklyData, breakdown };
+      return { weeklyData, breakdown };
+    }, 3000, 1);
   },
   ["energy-stats"],
   { revalidate: 60, tags: ["stats"] } // Cache for 60 seconds
@@ -57,7 +100,9 @@ const getCachedEnergyStats = unstable_cache(
 
 const getCachedCategories = unstable_cache(
   async () => {
-    return await db.select().from(categories);
+    return await queryWithTimeout(async () => {
+      return await db.select().from(categories);
+    }, 3000, 1);
   },
   ["categories"],
   { revalidate: 3600, tags: ["categories"] } // Cache for 1 hour (categories rarely change)
@@ -378,99 +423,140 @@ async function generateWeeklyTrendFromActivities(userId: number) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  // Get all activities from last 7 days
-  const userActivities = await db
-    .select({
-      energyImpact: activities.energyImpact,
-      createdAt: activities.createdAt,
-    })
-    .from(activities)
-    .where(
-      and(
-        eq(activities.userId, userId),
-        sql`${activities.createdAt} >= ${sevenDaysAgo.toISOString()}`
-      )
-    );
+  try {
+    // Get all activities from last 7 days with timeout
+    const userActivities = await queryWithTimeout(async () => {
+      return await db
+        .select({
+          energyImpact: activities.energyImpact,
+          createdAt: activities.createdAt,
+        })
+        .from(activities)
+        .where(
+          and(
+            eq(activities.userId, userId),
+            sql`${activities.createdAt} >= ${sevenDaysAgo.toISOString()}`
+          )
+        );
+    }, 3000, 1);
 
-  // Group by day
-  const dailyData: Record<string, { totalImpact: number; count: number }> = {};
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Group by day
+    const dailyData: Record<string, { totalImpact: number; count: number }> = {};
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // Initialize last 7 days
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    const dayName = days[date.getDay()];
-    dailyData[dayName] = { totalImpact: 0, count: 0 };
-  }
-
-  // Sum impacts by day
-  userActivities.forEach((activity) => {
-    if (!activity.createdAt) return;
-    const date = new Date(activity.createdAt);
-    const dayName = days[date.getDay()];
-    if (dailyData[dayName]) {
-      dailyData[dayName].totalImpact += activity.energyImpact || 0;
-      dailyData[dayName].count += 1;
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayName = days[date.getDay()];
+      dailyData[dayName] = { totalImpact: 0, count: 0 };
     }
-  });
 
-  // Calculate energy for each day (base 50 + impact)
-  return Object.entries(dailyData).map(([day, data]) => ({
-    day,
-    value: Math.round(Math.max(0, Math.min(100, 50 + data.totalImpact))),
-  }));
+    // Sum impacts by day
+    userActivities.forEach((activity) => {
+      if (!activity.createdAt) return;
+      const date = new Date(activity.createdAt);
+      const dayName = days[date.getDay()];
+      if (dailyData[dayName]) {
+        dailyData[dayName].totalImpact += activity.energyImpact || 0;
+        dailyData[dayName].count += 1;
+      }
+    });
+
+    // Calculate energy for each day (base 50 + impact)
+    return Object.entries(dailyData).map(([day, data]) => ({
+      day,
+      value: Math.round(Math.max(0, Math.min(100, 50 + data.totalImpact))),
+    }));
+  } catch (error) {
+    console.error("Failed to generate weekly trend:", error);
+    // Return empty trend data as fallback
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const now = new Date();
+    const trendData = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      trendData.push({ day: days[date.getDay()], value: 50 });
+    }
+    return trendData;
+  }
 }
 
 // Cached energy stats calculation from activities
 const getCachedEnergyStatsCalculated = unstable_cache(
   async (userId: number) => {
-    // Get today's activities for current energy calculation
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    try {
+      // Get today's activities for current energy calculation
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const todayActivities = await db
-      .select({
-        energyImpact: activities.energyImpact,
-        createdAt: activities.createdAt,
-      })
-      .from(activities)
-      .where(
-        and(
-          eq(activities.userId, userId),
-          sql`${activities.createdAt} >= ${today.toISOString()}`
-        )
-      );
+      const todayActivities = await queryWithTimeout(async () => {
+        return await db
+          .select({
+            energyImpact: activities.energyImpact,
+            createdAt: activities.createdAt,
+          })
+          .from(activities)
+          .where(
+            and(
+              eq(activities.userId, userId),
+              sql`${activities.createdAt} >= ${today.toISOString()}`
+            )
+          );
+      }, 3000, 1);
 
-    // Calculate current daily energy
-    const energyResult = calculateDailyEnergyFromActivities(todayActivities);
-    const { currentEnergy, isOverloaded, rawEnergy } = energyResult;
-    const peakTime = calculatePeakTime(todayActivities);
+      // Calculate current daily energy
+      const energyResult = calculateDailyEnergyFromActivities(todayActivities);
+      const { currentEnergy, isOverloaded, rawEnergy } = energyResult;
+      const peakTime = calculatePeakTime(todayActivities);
 
-    // Generate 7-day trend from activities
-    const weeklyData = await generateWeeklyTrendFromActivities(userId);
+      // Generate 7-day trend from activities
+      const weeklyData = await generateWeeklyTrendFromActivities(userId);
 
-    // Get activity breakdown (top 5 categories)
-    const breakdown = await db
-      .select({
-        categoryName: categories.name,
-        count: sql<number>`count(*)::int`,
-        avgImpact: sql<number>`avg(${activities.energyImpact})::float`,
-      })
-      .from(activities)
-      .leftJoin(categories, eq(activities.categoryId, categories.id))
-      .where(eq(activities.userId, userId))
-      .groupBy(categories.name)
-      .limit(5);
+      // Get activity breakdown (top 5 categories) with timeout
+      const breakdown = await queryWithTimeout(async () => {
+        return await db
+          .select({
+            categoryName: categories.name,
+            count: sql<number>`count(*)::int`,
+            avgImpact: sql<number>`avg(${activities.energyImpact})::float`,
+          })
+          .from(activities)
+          .leftJoin(categories, eq(activities.categoryId, categories.id))
+          .where(eq(activities.userId, userId))
+          .groupBy(categories.name)
+          .limit(5);
+      }, 3000, 1);
 
-    return {
-      currentEnergy,
-      isOverloaded,
-      overloadAmount: isOverloaded ? Math.round(rawEnergy - 100) : 0,
-      peakTime,
-      weeklyData,
-      activityBreakdown: breakdown,
-    };
+      return {
+        currentEnergy,
+        isOverloaded,
+        overloadAmount: isOverloaded ? Math.round(rawEnergy - 100) : 0,
+        peakTime,
+        weeklyData,
+        activityBreakdown: breakdown,
+      };
+    } catch (error) {
+      console.error("Failed to calculate energy stats:", error);
+      // Return default values as fallback
+      return {
+        currentEnergy: 50,
+        isOverloaded: false,
+        overloadAmount: 0,
+        peakTime: "10:00 AM",
+        weeklyData: [
+          { day: "Sun", value: 50 },
+          { day: "Mon", value: 50 },
+          { day: "Tue", value: 50 },
+          { day: "Wed", value: 50 },
+          { day: "Thu", value: 50 },
+          { day: "Fri", value: 50 },
+          { day: "Sat", value: 50 },
+        ],
+        activityBreakdown: [],
+      };
+    }
   },
   ["energy-stats-calculated"],
   { revalidate: 5, tags: ["energy-stats"] } // 5 second cache

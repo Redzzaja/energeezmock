@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GlassCard from "../components/GlassCard";
-import { registerUser, loginUser } from "../actions/authActions";
+import { registerUser, loginUser, createDemoUser } from "../actions/authActions";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -266,6 +266,64 @@ export default function AuthPage() {
               {isLogin ? "Sign Up" : "Sign In"}
             </button>
           </p>
+
+          {/* Demo Button */}
+          <div className="mt-6 pt-6 border-t border-surface-variant">
+            <button
+              type="button"
+              onClick={async () => {
+                setIsLoading(true);
+                setError("");
+                try {
+                  const result = await createDemoUser();
+                  if (result.success && result.user) {
+                    localStorage.setItem("currentUser", JSON.stringify(result.user));
+                    router.push("/home");
+                  } else if (result.error?.includes("not initialized")) {
+                    // Try to seed first, then load
+                    setError("Setting up demo account... Please wait.");
+                    const seedResponse = await fetch("/api/seed");
+                    const seedResult = await seedResponse.json();
+                    if (seedResult.success) {
+                      // Now try loading again
+                      const retryResult = await createDemoUser();
+                      if (retryResult.success && retryResult.user) {
+                        localStorage.setItem("currentUser", JSON.stringify(retryResult.user));
+                        router.push("/home");
+                      } else {
+                        setError("Failed to load demo account");
+                      }
+                    } else {
+                      setError("Failed to setup demo");
+                    }
+                  } else {
+                    setError(result.error || "Failed to create demo");
+                  }
+                } catch (err) {
+                  setError("An error occurred. Please try again.");
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-secondary-container text-on-secondary-container font-label-md text-label-md hover:bg-secondary-container/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-on-secondary-container/30 border-t-on-secondary-container rounded-full animate-spin"></div>
+                  Loading Demo...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">play_circle</span>
+                  Try Demo Account
+                </>
+              )}
+            </button>
+            <p className="text-center mt-2 font-label-sm text-label-sm text-on-surface-variant">
+              Pre-filled with sample data for testing
+            </p>
+          </div>
         </div>
       </div>
     </div>
