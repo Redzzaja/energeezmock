@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "./components/ServiceWorkerRegister";
+import CacheBuster from "./components/CacheBuster";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans">
+        <CacheBuster />
         <ServiceWorkerRegister />
         {children}
       </body>
