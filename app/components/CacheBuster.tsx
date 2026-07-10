@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 // App version - CHANGE THIS when deploying major updates to force cache refresh
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 export default function CacheBuster() {
   useEffect(() => {
