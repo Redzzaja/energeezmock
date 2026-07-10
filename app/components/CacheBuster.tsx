@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 // App version - CHANGE THIS when deploying major updates to force cache refresh
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.1.0";
 
 export default function CacheBuster() {
   useEffect(() => {
@@ -15,12 +15,8 @@ export default function CacheBuster() {
         if (storedVersion !== APP_VERSION) {
           console.log("[CacheBuster] New version detected:", APP_VERSION);
           
-          // Clear localStorage except user session
-          const userSession = localStorage.getItem("currentUser");
+          // Clear ALL localStorage (including sessions to force fresh login)
           localStorage.clear();
-          if (userSession) {
-            localStorage.setItem("currentUser", userSession);
-          }
           localStorage.setItem("app_version", APP_VERSION);
           
           // Clear sessionStorage
