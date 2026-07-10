@@ -100,6 +100,24 @@ export const energyLogs = pgTable(
   })
 );
 
+// Questionnaire answers - psychology & energy profile
+export const questionnaireAnswers = pgTable(
+  "questionnaire_answers",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    answers: jsonb("answers").notNull().default([]),
+    completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("questionnaire_user_idx").on(table.userId),
+  })
+);
+
 // ML predictions cache
 export const mlPredictions = pgTable(
   "ml_predictions",
@@ -128,10 +146,11 @@ export const mlPredictions = pgTable(
 );
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   activities: many(activities),
   energyLogs: many(energyLogs),
   mlPredictions: many(mlPredictions),
+  questionnaireAnswer: one(questionnaireAnswers),
 }));
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -168,6 +187,13 @@ export const mlPredictionsRelations = relations(mlPredictions, ({ one }) => ({
   }),
 }));
 
+export const questionnaireAnswersRelations = relations(questionnaireAnswers, ({ one }) => ({
+  user: one(users, {
+    fields: [questionnaireAnswers.userId],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -179,3 +205,5 @@ export type EnergyLog = typeof energyLogs.$inferSelect;
 export type NewEnergyLog = typeof energyLogs.$inferInsert;
 export type MLPrediction = typeof mlPredictions.$inferSelect;
 export type NewMLPrediction = typeof mlPredictions.$inferInsert;
+export type QuestionnaireAnswer = typeof questionnaireAnswers.$inferSelect;
+export type NewQuestionnaireAnswer = typeof questionnaireAnswers.$inferInsert;

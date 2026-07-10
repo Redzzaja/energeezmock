@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUserActivities, getEnergyStats, getCategories } from "../actions/activityActions";
+import { getQuestionnaire } from "../actions/questionnaireActions";
 import HomeClient from "./HomeClient";
 
 export default function HomePage() {
@@ -22,18 +23,29 @@ export default function HomePage() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    // Prevent multiple loads
-    if (hasLoaded) return;
-    
-    const storedUser = localStorage.getItem("currentUser");
-    if (!storedUser) {
-      router.push("/auth");
-      return;
-    }
+    const checkUser = async () => {
+      if (hasLoaded) return;
+      
+      const storedUser = localStorage.getItem("currentUser");
+      if (!storedUser) {
+        router.push("/auth");
+        return;
+      }
 
-    const user = JSON.parse(storedUser);
-    setHasLoaded(true);
-    loadUserData(user.id);
+      const user = JSON.parse(storedUser);
+      
+      // Check if user has completed or skipped questionnaire
+      const skipped = localStorage.getItem(`questionnaireSkipped_${user.id}`);
+      const questionnaireResult = await getQuestionnaire(user.id);
+      if (!questionnaireResult.completed && skipped !== "true") {
+        router.push("/questionnaire");
+        return;
+      }
+
+      setHasLoaded(true);
+      loadUserData(user.id);
+    };
+    checkUser();
   }, [router, hasLoaded]);
 
   const loadUserData = async (userId: number) => {

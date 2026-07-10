@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import GlassCard from "../components/GlassCard";
 import { registerUser, loginUser, createDemoUser } from "../actions/authActions";
+import { getQuestionnaire } from "../actions/questionnaireActions";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -29,7 +30,13 @@ export default function AuthPage() {
         if (result.success && result.user) {
           // Save user to localStorage for session
           localStorage.setItem("currentUser", JSON.stringify(result.user));
-          router.push("/home");
+          // Check if user has completed questionnaire
+          const questionnaireResult = await getQuestionnaire(result.user.id);
+          if (questionnaireResult.completed || localStorage.getItem(`questionnaireSkipped_${result.user.id}`) === "true") {
+            router.push("/home");
+          } else {
+            router.push("/questionnaire");
+          }
         } else {
           setError(result.error || "Login failed");
         }
@@ -267,8 +274,29 @@ export default function AuthPage() {
             </button>
           </p>
 
-          {/* Demo Button */}
+          {/* Demo Questionnaire Button */}
           <div className="mt-6 pt-6 border-t border-surface-variant">
+            <button
+              type="button"
+              onClick={() => router.push("/questionnaire")}
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md hover:bg-primary-container/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                quiz
+              </span>
+              Try Demo Questionnaire
+            </button>
+            <p className="text-center mt-2 font-label-sm text-label-sm text-on-surface-variant">
+              No account required — explore the app
+            </p>
+          </div>
+
+          {/* Demo Account Button */}
+          <div className="mt-4">
             <button
               type="button"
               onClick={async () => {
@@ -278,7 +306,13 @@ export default function AuthPage() {
                   const result = await createDemoUser();
                   if (result.success && result.user) {
                     localStorage.setItem("currentUser", JSON.stringify(result.user));
-                    router.push("/home");
+                    // Check if demo user has completed questionnaire
+                    const questionnaireResult = await getQuestionnaire(result.user.id);
+                    if (questionnaireResult.completed || localStorage.getItem(`questionnaireSkipped_${result.user.id}`) === "true") {
+                      router.push("/home");
+                    } else {
+                      router.push("/questionnaire");
+                    }
                   } else if (result.error?.includes("not initialized")) {
                     // Try to seed first, then load
                     setError("Setting up demo account... Please wait.");
@@ -289,7 +323,13 @@ export default function AuthPage() {
                       const retryResult = await createDemoUser();
                       if (retryResult.success && retryResult.user) {
                         localStorage.setItem("currentUser", JSON.stringify(retryResult.user));
-                        router.push("/home");
+                        // Check if demo user has completed questionnaire
+                        const questionnaireResult2 = await getQuestionnaire(retryResult.user.id);
+                        if (questionnaireResult2.completed || localStorage.getItem(`questionnaireSkipped_${retryResult.user.id}`) === "true") {
+                          router.push("/home");
+                        } else {
+                          router.push("/questionnaire");
+                        }
                       } else {
                         setError("Failed to load demo account");
                       }
