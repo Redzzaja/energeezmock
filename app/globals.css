@@ -311,6 +311,16 @@
     }
   }
   
+  /* Scrollbar Hide (no visual scrollbar but still scrollable) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
   /* Custom Scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
